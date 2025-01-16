@@ -11,7 +11,7 @@
 1. 安装依赖的库文件，在RDK X5板端执行
 
 ```shell
-cp -rv ./lib/* /usr/
+cp -rv hobot_s316_cam/lib/* /usr/
 ```
 
 2. 交叉编译，在PC端执行
@@ -21,6 +21,12 @@ bash ./robot_dev_config/build.sh -p X5 -s hobot_s316_cam
 ```
 
 ## 运行
+
+(0) 运行s316相机之前，需要将配置文件拷贝到运行目录
+
+```shell
+cp -rv hobot_s316_cam/config/cfg ./
+```
 
 (1) 发布双目图像
 
@@ -37,7 +43,7 @@ ros2 launch hobot_s316_cam pub_stereo_imgs.launch.py
 ```bash
 ros2 launch hobot_s316_cam test_stereo_custom_rectify.launch.py \
 stereonet_model_file_path:=./x5baseplus_alldata_woIsaac_yuv444.bin postprocess:=v2 \
-stereo_calib_path:=./stereo_8_zed_2i_1280_640.yaml
+stereo_calib_path:=./stereo_8.yaml
 ```
 
 在浏览器输入[http://ip:8000](http://ip:8000)即可查看双目算法的结果

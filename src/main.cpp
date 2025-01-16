@@ -24,6 +24,9 @@ public:
     {
         // ======================================================================================================================================
         RCLCPP_INFO(this->get_logger(), "=> init s316_cam_node");
+        // param
+        need_gdc_ = this->declare_parameter("need_gdc", false);
+        RCLCPP_INFO_STREAM(this->get_logger(), "\033[31m" << std::endl << "=> need_gdc: " << need_gdc_ << std::endl << "\033[0m");
 
         // ======================================================================================================================================
         // sub & pub
@@ -50,7 +53,7 @@ private:
         int Handle = 0;
         if (moOpenCamera(Handle) != 0)
         {
-            RCLCPP_ERROR(this->get_logger(), "\033[31m=> open camera error!\033[0m");
+            RCLCPP_ERROR(this->get_logger(), "\033[31m=> open s316 camera error!\033[0m");
             return -1;
         }
         return 0;
@@ -65,44 +68,69 @@ private:
         while (rclcpp::ok())
         {
             auto stereo_msg = std::make_shared<sensor_msgs::msg::Image>();
+            stereo_msg->header.frame_id = "pcl_link";
+            stereo_msg->is_bigendian = false;
+            stereo_msg->encoding = "nv12";
 
-            MoFrame orgRgbFrame;
-            if (MO_REV_OK == moGetOneOrgRGBFrame(handle, &orgRgbFrame))
+            if (!need_gdc_)
             {
-                MoFrame leftRgbFrame, rightRgbFrame;
-                moDecodeFrame(handle, &orgRgbFrame, &leftRgbFrame, &rightRgbFrame);
+                MoFrame orgRgbFrame;
+                if (MO_REV_OK == moGetOneOrgRGBFrame(handle, &orgRgbFrame))
+                {
+                    MoFrame leftRgbFrame, rightRgbFrame;
+                    moDecodeFrame(handle, &orgRgbFrame, &leftRgbFrame, &rightRgbFrame);
 
-                // RCLCPP_INFO(this->get_logger(), "=> orgRgbFrame leftRgbFrame rightRgbFrame stamp: %lld, %lld, %lld", orgRgbFrame.TimeStamp, leftRgbFrame.TimeStamp, rightRgbFrame.TimeStamp);
-                // RCLCPP_INFO(this->get_logger(), "=> orgRgbFrame leftRgbFrame rightRgbFrame size: %d, %d, %d", orgRgbFrame.BytesUsed, leftRgbFrame.BytesUsed, rightRgbFrame.BytesUsed);
+                    // RCLCPP_INFO(this->get_logger(), "=> orgRgbFrame leftRgbFrame rightRgbFrame stamp: %lld, %lld, %lld", orgRgbFrame.TimeStamp, leftRgbFrame.TimeStamp, rightRgbFrame.TimeStamp);
+                    // RCLCPP_INFO(this->get_logger(), "=> orgRgbFrame leftRgbFrame rightRgbFrame size: %d, %d, %d", orgRgbFrame.BytesUsed, leftRgbFrame.BytesUsed, rightRgbFrame.BytesUsed);
 
-                // 输出图像指针
-                void *output_image = nullptr;
-                output_image = std::malloc(orgRgbFrame.BytesUsed);
+                    // output image pointer
+                    void *output_image = nullptr;
+                    output_image = std::malloc(orgRgbFrame.BytesUsed);
 
-                // 拼接图像
-                concatenateNV12Images(leftRgbFrame.Data, rightRgbFrame.Data, 1280, 1088, output_image);
+                    // concate image
+                    concatenateNV12Images(leftRgbFrame.Data, rightRgbFrame.Data, 1280, 1088, output_image);
 
-                stereo_msg->header.stamp = rclcpp::Time(orgRgbFrame.TimeStamp);
-                stereo_msg->header.frame_id = "pcl_link";
-                stereo_msg->height = 2176;
-                stereo_msg->width = 1280;
-                stereo_msg->is_bigendian = false;
-                stereo_msg->encoding = "nv12";
-                stereo_msg->step = stereo_msg->width;
-                stereo_msg->data.resize(orgRgbFrame.BytesUsed);
-                std::memcpy(stereo_msg->data.data(), output_image, orgRgbFrame.BytesUsed);
-                stereo_msg_pub_->publish(*stereo_msg);
+                    stereo_msg->header.stamp = rclcpp::Time(orgRgbFrame.TimeStamp);
+                    stereo_msg->height = 2176;
+                    stereo_msg->width = 1280;
+                    stereo_msg->step = stereo_msg->width;
+                    stereo_msg->data.resize(orgRgbFrame.BytesUsed);
+                    std::memcpy(stereo_msg->data.data(), output_image, orgRgbFrame.BytesUsed);
+                    stereo_msg_pub_->publish(*stereo_msg);
 
-                moReleaseFrame(&orgRgbFrame);
-                std::free(output_image);
+                    moReleaseFrame(&orgRgbFrame);
+                    std::free(output_image);
+                }
             }
-
-            MoFrame rgbFrame;
-            if (MO_REV_OK == moGetOneRGBFrame(handle, &rgbFrame))
+            else
             {
-                MoFrame leftRgbFrame, rightRgbFrame;
-                moDecodeFrame(handle, &rgbFrame, &leftRgbFrame, &rightRgbFrame);
-                moReleaseFrame(&rgbFrame);
+                MoFrame rgbFrame;
+                if (MO_REV_OK == moGetOneRGBFrame(handle, &rgbFrame))
+                {
+                    MoFrame leftRgbFrame, rightRgbFrame;
+                    moDecodeFrame(handle, &rgbFrame, &leftRgbFrame, &rightRgbFrame);
+
+                    // RCLCPP_INFO(this->get_logger(), "=> rgbFrame leftRgbFrame rightRgbFrame stamp: %lld, %lld, %lld", rgbFrame.TimeStamp, leftRgbFrame.TimeStamp, rightRgbFrame.TimeStamp);
+                    // RCLCPP_INFO(this->get_logger(), "=> rgbFrame leftRgbFrame rightRgbFrame size: %d, %d, %d", rgbFrame.BytesUsed, leftRgbFrame.BytesUsed, rightRgbFrame.BytesUsed);
+
+                    // output image pointer
+                    void *output_image = nullptr;
+                    output_image = std::malloc(rgbFrame.BytesUsed);
+
+                    // concate image
+                    concatenateNV12Images(leftRgbFrame.Data, rightRgbFrame.Data, 640, 544, output_image);
+
+                    stereo_msg->header.stamp = rclcpp::Time(rgbFrame.TimeStamp);
+                    stereo_msg->height = 1088;
+                    stereo_msg->width = 640;
+                    stereo_msg->step = stereo_msg->width;
+                    stereo_msg->data.resize(rgbFrame.BytesUsed);
+                    std::memcpy(stereo_msg->data.data(), output_image, rgbFrame.BytesUsed);
+                    stereo_msg_pub_->publish(*stereo_msg);
+
+                    std::free(output_image);
+                    moReleaseFrame(&rgbFrame);
+                }
             }
         }
         return 0;
@@ -147,6 +175,9 @@ private:
     // ======================================================================================================================================
     // stereo image publisher
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr stereo_msg_pub_;
+
+    // image gdc rectify flag
+    bool need_gdc_ = false;
 };
 
 int main(int argc, char *argv[])

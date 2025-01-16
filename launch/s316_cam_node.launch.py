@@ -39,6 +39,7 @@ def set_configurable_parameters(parameters):
 
 def generate_launch_description():
     node_params = [
+        {"name": "need_gdc", "default_value": "false", "description": "need_gdc"},
         {"name": "log_level", "default_value": "info", "description": "log_level"},
     ]
 

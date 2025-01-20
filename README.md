@@ -22,10 +22,17 @@ bash ./robot_dev_config/build.sh -p X5 -s hobot_s316_cam
 
 ## 运行
 
-(0) 运行s316相机之前，需要将配置文件拷贝到运行目录
+(0) 运行s316相机之前，需要将配置文件拷贝到运行目录，以及lib文件需要能被系统找到
 
 ```shell
+# 配置文件拷贝到运行目录
 cp -rv hobot_s316_cam/config/cfg ./
+
+# lib文件能被系统找到
+# 方法1：将lib文件夹配置到环境变量
+export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:./hobot_s316_cam/lib
+# 方法2：将lib文件拷贝到/usr/lib目录下
+cp -rv ./hobot_s316_cam/lib/* /usr/lib
 ```
 
 (1) 发布双目图像

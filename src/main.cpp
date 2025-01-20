@@ -39,8 +39,8 @@ public:
             rclcpp::shutdown();
             return;
         }
+        rclcpp::on_shutdown([this]() { deinitCam(); });
         getImageData();
-        deinitCam();
     }
 
 private:
